@@ -1,0 +1,24 @@
+name = "SimpleAds"
+description = "Advertisements"
+package = "SimpleAds"
+core = "7.x"
+
+scripts[] = simpleads.js
+stylesheets[all][] = simpleads.css
+
+files[] = includes/views_simpleads_plugin.inc
+
+dependencies[] = taxonomy
+dependencies[] = field
+dependencies[] = options
+dependencies[] = list
+dependencies[] = field_sql_storage
+dependencies[] = file
+dependencies[] = image
+dependencies[] = text
+; Information added by drupal.org packaging script on 2011-12-30
+version = "7.x-1.7"
+core = "7.x"
+project = "simpleads"
+datestamp = "1325229645"
+

@@ -1,0 +1,49 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the qtip module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function qtip_install() {
+  // Get the qTip settings, set by the administrator
+  variable_set('qtip_target_position', 'top_right');
+  variable_set('qtip_show_speech_bubble_tip_side', TRUE);  
+  variable_set('qtip_show_speech_bubble_tip_side', FALSE);  
+  variable_set('qtip_speech_bubble_tip_size', 12);
+  
+  variable_set('qtip_show_speech_bubble_tip_solid', FALSE);
+  variable_set('qtip_show_shadow', FALSE);
+  variable_set('qtip_rounded_corners', FALSE);
+  variable_set('qtip_color', '');
+  variable_set('qtip_custom_color', '');
+  
+  variable_set('qtip_show_event_type', 'mouseenter');
+  variable_set('qtip_hide_event_type', 'mouseleave');
+  variable_set('qtip_additional_elements', '');
+
+  variable_set('qtip_lib_version', '2.0.0pre');
+  variable_set('qtip_load_lib_on_every_page', TRUE);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function qtip_uninstall() {
+  variable_del('qtip_target_position');
+  variable_del('qtip_show_speech_bubble_tip');
+  variable_del('qtip_show_speech_bubble_tip_side');
+  variable_del('qtip_speech_bubble_tip_size');
+  variable_del('qtip_show_speech_bubble_tip_solid');
+  variable_del('qtip_show_shadow');
+  variable_del('qtip_rounded_corners');
+  variable_del('qtip_color');
+  variable_del('qtip_custom_color');
+  variable_del('qtip_show_event_type');
+  variable_del('qtip_hide_event_type');
+  variable_del('qtip_show_webform_descriptions');
+  variable_del('qtip_additional_elements');
+}

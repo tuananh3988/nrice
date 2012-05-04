@@ -1,0 +1,5 @@
+name = Ubercart custom address field
+description = A custom module to add more field to UC Address
+dependencies[] = uc_store
+package = Ubercart - Custom
+core = 7.x

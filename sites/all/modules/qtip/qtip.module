@@ -1,0 +1,194 @@
+<?php
+
+
+/**
+* Implements hook_library().
+*/
+function qtip_library() {
+  $lib_version = variable_get('qtip_lib_version', '2.0.0pre');
+  $lib_path = drupal_get_path('module', 'qtip') . '/library/';
+  
+
+  // Create the library
+  $libraries['qtip'] = array(
+    'title' => 'qTip',
+    'website' => 'http://craigsworks.com/projects/qtip',
+    'version' => $lib_version,
+    'js' => array(
+        $lib_path . '/jquery.qtip.js'=> array(),
+        drupal_get_path('module', 'qtip') . '/js/qtip.js' => array(),
+      ),
+      'css' => array(
+        drupal_get_path('module', 'qtip') . '/library/jquery.qtip.css' => array(
+          'type' => 'file',
+          'media' => 'screen',
+        ),
+        drupal_get_path('module', 'qtip') . '/css/qtip.css' => array(
+          'type' => 'file',
+          'media' => 'screen',
+        ),
+    ),
+  );
+
+  // We have to get the right setting for the tooltip
+  $qtip_position_map = array(
+    'top_left' => 'bottom_right',
+    'top_center' => 'bottom_center',
+    'top_right' => 'bottom_left',
+    'right_center' => 'left_center',
+    'bottom_right' => 'top_left',
+    'bottom_center' => 'top_center',
+    'bottom_left' => 'top_right',
+    'left_center' => 'right_center',
+  );
+
+  // Get the qTip settings, set by the administrator
+  $target_position = variable_get('qtip_target_position', 'top_right');
+  $tooltip_position = $qtip_position_map[$target_position];
+
+  $settings = array(
+    'target_position' => $target_position,
+    'tooltip_position' => $tooltip_position,
+    'show_speech_bubble_tip' => variable_get('qtip_show_speech_bubble_tip', TRUE),
+    'show_speech_bubble_tip_side' => variable_get('qtip_show_speech_bubble_tip_side', FALSE),
+    'speech_bubble_size' => variable_get('qtip_speech_bubble_tip_size', 12),
+    'show_speech_bubble_tip_solid' => variable_get('qtip_show_speech_bubble_tip_solid', FALSE),
+    'show_shadow' => variable_get('qtip_show_shadow', FALSE),
+    'rounded_corners' => variable_get('qtip_rounded_corners', FALSE),
+    'color' => variable_get('qtip_color', ''),
+    'custom_color' => variable_get('qtip_custom_color', ''),
+    'show_event_type' => variable_get('qtip_show_event_type', 'mouseenter'),
+    'hide_event_type' => variable_get('qtip_hide_event_type', 'mouseleave'),
+    'additional_elements' => variable_get('qtip_additional_elements', ''),
+  );
+
+  // Send the settings to qtip.js
+  drupal_add_js(array('qtip' => $settings), 'setting');
+
+  return $libraries;
+}
+
+/**
+ * Implements hook_init().
+ */
+function qtip_init() {
+  // If the module has been configured to load the qTip library on every page, load the library 
+  $load_lib_on_every_page = variable_get('qtip_load_lib_on_every_page', TRUE);
+  if ($load_lib_on_every_page) {
+    drupal_add_library('qtip', 'qtip');
+  }
+  
+  // Only load qtip.admin.js file if currently viewing qTip settings page
+  if (request_uri() == base_path() . 'admin/config/content/qtip') {
+    drupal_add_js(drupal_get_path('module', 'qtip') . '/js/qtip.admin.js');
+  }
+}
+
+
+/**
+ * Implements hook_menu().
+ */
+function qtip_menu() {
+  $items = array();
+    
+  $items['admin/config/content/qtip'] = array(
+    'title' => 'qTip',
+    'description' => 'Control how qTips (tooltips) will be displayed by default on each page',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('qtip_settings_form'),
+    'access arguments' => array('administer qtip'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'qtip.admin.inc',
+  );
+  
+  $items['qtip-examples'] = array(
+    'title' => 'qTip Examples',
+    'description' => 'A test page for qTips',
+    'page callback' => 'qtip_get_test_markup',
+    'access arguments' => array('administer qtip'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  
+  return $items;
+}
+
+
+/**
+ * Returns markup with sample tooltip links.
+ */
+function qtip_get_test_markup() {
+  $markup = theme('qtip.examples');
+  return $markup;
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function qtip_theme() {
+  $template_path = drupal_get_path('module', 'qtip') . '/examples';
+  
+  $theme['qtip.examples'] = array(
+      	'path' => $template_path,
+        'template' => 'qtip.examples',
+      	'variables' => array(),
+  );
+
+  return $theme;
+}
+
+
+/**
+ * Implements hook_permission().
+ */
+function qtip_permission() {  
+  return array(
+    'administer qtip' => array(
+      'title' => t('Administer qTip'), 
+      'description' => t('Administer qTip settings.'),
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_filter_info().
+ */
+function qtip_filter_info() {
+  $filters['qtip'] = array(
+    'title' => t('qTips'),
+    'description' => t('Add jQuery qTip (tooltip) to text. Usage [qtip:Text to highlight|The tooltip\'s content]'),
+    'process callback' => '_qtip_filter',
+    'tips callback'  => '_qtip_filter_tips',
+  );
+  
+  return $filters;
+}
+
+
+/**
+ * Private callback function for qtip_filter_info().
+ */
+function _qtip_filter($text, $format) {
+  if (preg_match_all("/\[qtip:([^\|\\]]+)\|?([^\\]]*)?\]/i", $text, $match)) {
+    // Set the default delta value to be used in the foreach statement below for <span> ids
+    $delta = 0;
+    foreach ($match[2] as $key => $value) {
+      $link = $match[1][$key];
+      $tip = $match[2][$key];
+      $search[] = $match[0][$key];
+      $replace[] = '<span id="qtip-link-' . $delta . '" class="qtip-link ' . ($delta % 2 ? 'qtip-link-even' : 'qtip-link-odd') . '" title="' . $tip . '">' . $link . '</span>';
+      $delta++;
+    }
+    return str_replace($search, $replace, $text);
+  }
+  return $text;
+}
+
+
+/**
+ * Private callback function for qtip_filter_info().
+ */
+function _qtip_filter_tips($delta, $format, $long = FALSE) {
+  return 'Generate stylish tooltips. Format: [qtip:Text to highlightThe tooltip\'s content]';
+}

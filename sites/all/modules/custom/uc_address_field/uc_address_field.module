@@ -1,0 +1,60 @@
+<?php
+function uc_address_field_uc_checkout_pane_alter(&$panes) {    
+  $panes['delivery']['callback'] = 'uc_address_field_pane_delivery';
+  $panes['billing']['callback'] = 'uc_address_field_pane_billing';
+}
+
+function uc_address_field_pane_delivery($op, $order, $form, &$form_state, $description = null, $copy = null) {
+  require_once(drupal_get_path('module', 'uc_cart') . '/uc_cart_checkout_pane.inc');
+  switch ($op) {
+    case 'view':
+      $contents = uc_checkout_pane_delivery($op, $order, $form, &$form_state, $description, $copy);    
+      $district_obj = field_info_field('field_district');
+      
+      $contents['contents']['delivery_district'] = array(
+        '#type' => 'select',
+        '#title' => t('District'),
+        '#options' => $district_obj['settings']['allowed_values'],
+        '#required' => TRUE,
+        '#weight' => 10,
+        '#default_value' => isset($order->data['delivery_district'])?$order->data['delivery_district']:null,
+      );
+      
+      return $contents;
+
+    case 'review':
+      echo $order->data['delivery_district'];
+      return uc_checkout_pane_delivery($op, $order, $form, &$form_state, $description, $copy);
+
+    case 'process':
+      $order->billing_district = $form['delivery_district']; // Save our custom field.
+      return uc_checkout_pane_delivery($op, $order, $form, &$form_state, $description, $copy);
+  }
+}
+
+function uc_address_field_pane_billing($op, $order, $form, &$form_state) {
+  require_once(drupal_get_path('module', 'uc_cart') . '/uc_cart_checkout_pane.inc');
+  switch ($op) {
+    case 'view':
+      $contents = uc_checkout_pane_billing($op, $order, $form, &$form_state);      
+      $district_obj = field_info_field('field_district');
+      
+      $contents['contents']['billing_district'] = array(
+        '#type' => 'select',
+        '#title' => t('District'),
+        '#options' => $district_obj['settings']['allowed_values'],
+        '#required' => TRUE,
+        '#weight' => 10,
+        '#default_value' => isset($order->data['billing_district'])?$order->data['billing_district']:null,
+      );
+      
+      return $contents;
+
+    case 'review':
+      return uc_checkout_pane_billing($op, $order, $form, &$form_state);
+
+    case 'process':
+      $order->billing_district = $form['billing_district']; // Save our custom field.
+      return uc_checkout_pane_billing($op, $order, $form, &$form_state);
+  }
+}

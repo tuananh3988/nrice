@@ -1,0 +1,64 @@
+
+/**
+ * @file
+ * Provides default styling for qTips
+ */
+
+.qtip-link, .qtip-additional-element {
+  border-bottom: 3px double blue;
+  cursor: default;
+  color: blue;
+  display: inline;
+}
+
+.qtip-link.ui-tooltip-click {
+  cursor: pointer;
+}
+
+/* This is a not-real-cool way to circumvent the automatic <br> and <p>
+   tags placed by the filtering system */
+.qtip-link br,
+.qtip-link p {
+  display: none;
+}
+
+.qtip-header,
+.qtip-tooltip,
+.qtip-ajax,
+.qtip-modal,
+.qtip-show,
+.qtip-hide,
+.qtip-style-classes,
+.qtip-tooltip-position,
+.qtip-title-button,
+.qtip-speech-bubble {
+  display: none;
+}
+
+.speech-bubble-options {
+  margin-left: 30px;
+}
+
+.form-item-qtip-custom-color {
+  display: none;
+  margin-left: 30px;
+}
+
+.form-item-qtip-custom-color input {
+  width: 175px;
+}
+
+#edit-qtip-running-version {
+  border:medium none;
+  margin: 0;
+  padding: 0 0 0 10px;
+}
+
+
+/* Admin Styles
+  ---------------------------------------------------------- */
+.qtip-warning-highlight {
+  color: red;
+}
+
+

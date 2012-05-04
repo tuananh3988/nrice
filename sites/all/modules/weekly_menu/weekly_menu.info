@@ -1,0 +1,6 @@
+name = Weekly Menu
+description = Allow administrator setup weekly menu for foods. This module coded by Do Nam Khanh (donamkhanh@gmail.com)
+package = "Food Store"
+core  = 7.x
+version = 1.0
+dependencies[] = uc_store

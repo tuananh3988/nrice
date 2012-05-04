@@ -1,0 +1,264 @@
+<?php
+function weekly_menu_menu() {
+  $items['thuc-don'] = array(
+		'page callback' => 'weekly_menu_callback',
+		'page arguments' => array(1),
+		'access callback' => TRUE,
+		'menu_name' => 'main_meun',
+		'type' => MENU_NORMAL_ITEM,
+	);
+	
+	$items['weekly_menu_ajax'] = array(
+		'page callback' => 'weekly_menu_ajax_callback',
+		'page arguments' => array(1),
+		'access callback' => TRUE,
+		'menu_name' => 'main_meun',
+		'type' => MENU_CALLBACK,
+		'd'
+	);
+	
+	return $items;
+}
+
+function weekly_menu_form_node_admin_content_alter(&$form, &$form_state, $form_id) {    
+	$vocabulary = 'thuc_don_theo_ngay';
+	$vocabularies = taxonomy_vocabulary_get_names();
+	
+	if (!isset($vocabularies[$vocabulary])) {
+		return;
+	}
+	
+	$vid = $vocabularies[$vocabulary]->vid;
+	$terms = taxonomy_get_tree($vid);
+	
+	$options = array();
+	foreach ($terms as $term) {
+		$options[$term->tid] = str_repeat(' - ', $term->depth) . $term->name;
+  }
+	
+  $form['admin']['weekly_menu'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Cập nhật thực đơn'),
+		'#attributes' => array('class' => Array('container-inline')),
+		'#access' => 1,
+		'#weight' => -10,
+		'catalog_assign' => array(
+			'#type' => 'checkboxes',
+			//'#title' => t('Chọn thực đơn'),			
+			'#options' => $options,
+		),
+		'submit_action' => array(
+			'#type' => 'submit',
+			'#value' => t('Assign'),
+			'#submit' => array('weekly_menu_submit'),
+		),
+	);
+}
+
+function weekly_menu_submit($form, &$form_state) {
+//	$vocabulary = 'thuc_don_theo_ngay';
+//	$vocabularies = taxonomy_vocabulary_get_names();
+//	if (!isset($vocabularies[$vocabulary])) {
+//		return 0;
+//	}
+//	
+//	$vid = $vocabularies[$vocabulary]->vid;
+//	$terms = taxonomy_get_tree($vid);
+//	$options = array();
+//	$date_week = array(
+//		0 => 'Chủ nhật',
+//		1 => 'Thứ Hai',
+//		2 => 'Thứ Ba',
+//		3 => 'Thứ Tư',
+//		4 => 'Thứ Năm',
+//		5 => 'Thứ Sáu',
+//		6 => 'Thứ Bảy',
+//	);
+//	$today = date('w');
+//	
+//	foreach ($terms as $term) {
+//		if ($term->name === $date_week[$today]) {
+//			return $term->tid;
+//		}
+//	}
+//	
+//	return 0;
+
+	$tids = $form_state['values']['catalog_assign'];
+	$nodes = array_filter($form_state['values']['nodes']);
+	$nodes = node_load_multiple($nodes);
+	
+	$new_tids = array();
+	foreach ($tids as $tid) {
+		if ($tid) {
+			$new_tids[] = array('tid' => $tid);
+		}
+	}
+	
+	if (!$new_tids) {
+		drupal_set_message(t('Vui lòng chọn sản phẩm để cập nhật.'), 'error');
+		return;
+	}
+	
+	foreach ($nodes as $node) {
+			$node->field_week_menu['und'] = $new_tids;
+			node_save($node);
+	}
+	
+	drupal_set_message(t('Cập nhật thành công.'));
+}
+
+function weekly_menu_callback() {
+	drupal_add_library('system', 'drupal.ajax');
+	
+	// Map Weekly Menu with date('w')
+	$week = array(
+		0 => 30, //Sunday
+		1 => 24, //Monday
+		2 => 25, //Tuesday
+		3 => 26, //Wednesday
+		4 => 27, //Thursday
+		5 => 28, //Friday
+		6 => 29, //Saturday
+	);
+  $date_week = array(
+		30 => 'Chủ Nhật',
+		24 => 'Thứ Hai',
+		25 => 'Thứ Ba',
+		26 => 'Thứ Tư',
+		27 => 'Thứ Năm',
+		28 => 'Thứ Sáu',
+		29 => 'Thứ Bảy',
+	);
+  
+	$day_of_week = (int) arg(1);
+	$day_of_week = empty($day_of_week)?$week[date('w')]:$day_of_week;
+  
+  drupal_set_title(t('Thực đơn ' . $date_week[$day_of_week]));
+  drupal_set_breadcrumb(array());
+  
+	$product_term_query = "SELECT t.tid, t.name
+					FROM {taxonomy_term_data} t 
+					INNER JOIN {taxonomy_term_hierarchy} h 
+						ON h.tid = t.tid WHERE (t.vid = :vid) AND h.parent = 0 
+					ORDER BY t.weight ASC, t.name ASC";
+	$result = db_query($product_term_query, array(':vid' => 2));
+	$categories = array();
+	foreach ($result as $r) {
+		$categories[] = '<div class="item">'.l($r->name, "weekly_menu_ajax/nojs/{$r->tid}/{$day_of_week}", array('attributes' => array('class' => array('use-ajax')))).'</div>'; 
+	}  
+	
+	$output = theme('item_list', array('items' => $categories, 'attributes' => array('id' => 'product-category')));
+	$output .= '<div id="ajax-product-list">'.get_product_menu($cat_id, $day_of_week).'</div>';
+	return $output;
+}
+
+function weekly_menu_ajax_callback($type = 'ajax') {
+	$day_of_week = arg(2);
+	$cat_id = (int) arg(3);
+	
+	$output = get_product_menu($day_of_week, $cat_id);
+	
+	if ($type == 'ajax') {
+    $commands = array();
+    $commands[] = ajax_command_html('#ajax-product-list', $output);
+    $page = array('#type' => 'ajax', '#commands' => $commands);
+    ajax_deliver($page);
+  }
+  else {
+    return $output;
+  }
+}
+
+function get_product_menu($cat_id = 0, $menu_id = 0) {
+	// Map Weekly Menu with date('w')
+	$week = array(
+		0 => 30, //Sunday
+		1 => 24, //Monday
+		2 => 25, //Tuesday
+		3 => 26, //Wednesday
+		4 => 27, //Thursday
+		5 => 28, //Friday
+		6 => 29, //Saturday
+	);
+	
+	$cat_id = empty($cat_id)?11:$cat_id;
+	$menu_id = empty($menu_id)?$week[date('w')]:$menu_id;
+	
+	$query = "SELECT * 
+						FROM {uc_products} up
+						INNER JOIN {node} n
+							ON n.nid = up.nid
+						INNER JOIN {field_data_body} fdb
+							ON fdb.entity_id = n.nid
+						INNER JOIN {file_usage} fu
+							ON fu.id = n.nid
+						INNER JOIN {file_managed} fm
+							ON fm.fid = fu.fid
+						INNER JOIN {taxonomy_index} ti1
+							ON ti1.nid = n.nid
+						INNER JOIN {taxonomy_term_data} ttd
+							ON ttd.tid =ti1.tid
+						INNER JOIN {taxonomy_index} ti2
+							ON ti2.nid = n.nid
+						INNER JOIN {taxonomy_term_data} ttd2
+							ON ttd2.tid = ti2.tid
+						WHERE ti1.tid = :cat_id AND ti2.tid = :menu_id
+						GROUP BY n.nid
+						ORDER BY changed DESC";
+	$result = db_query($query, array(':cat_id' => $cat_id, ':menu_id' => $menu_id));
+	$output = '';
+	foreach ($result as $row) {
+		$product = node_load($row->nid);
+		if ($week[date('w')] == $menu_id) {
+			//$form = drupal_get_form('uc_catalog_buy_it_now_form_' . $row->nid, $product);
+			$form = drupal_get_form('uc_product_add_to_cart_form_' . $row->nid, $product);
+			$product_form = drupal_render($form);
+		}
+		else {
+			$product_form = '';
+		}
+		
+		$image = image_style_url('191x140', $row->uri);
+		$link = base_path() . 'node/' . $row->nid;
+		$output .= '<div class="view view-thuc-don-tuan view-id-thuc_don_tuan view-display-id-catalog">
+				<div class="view-content">
+					<div class="item-list">    
+						<ul>          
+							<li class="views-row views-row-1 views-row-odd views-row-first product-item">  
+								<div class="views-field views-field-entity-id">        
+									<div class="field-content">
+										<a href="'. $link .'">
+											<img width="191" height="140" alt="" src="'.$image.'">
+										</a>
+									</div>  
+								</div>  
+								<div class="views-field views-field-title">        
+									<span class="field-content"><a href="' . $link . '">'. $row->title .'</a></span>  
+								</div>  
+								<div class="views-field views-field-body">        
+									<div class="field-content">
+										<p>' . $row->body_value . '</p>
+									</div>  
+								</div>  
+								<div class="views-field views-field-display-price">        
+									<span class="field-content">'. theme('uc_price', array('price' => $row->sell_price)) .'</span>  
+								</div>  
+								<div class="views-field views-field-buyitnowbutton">        
+									<div class="field-content">
+										' .$product_form.'
+									</div>  
+								</div>
+							</li>
+						</ul>
+					</div>    
+				</div>
+			</div>';
+	}
+	
+	if (empty($output)) {
+		$output = t('Sản phẩm chưa được cập nhật, xin bạn vui lòng quay lại sau!');
+	}
+	
+	return $output;
+}
